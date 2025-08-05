@@ -1,0 +1,141 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# pkgdown site
+docs/
+
+# translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
+
+# Data files - large datasets should not be committed
+data/downloads/
+data/extracted/
+*.zip
+*.tar.gz
+*.csv
+*.rds
+*.xlsx
+*.xls
+
+# Specific CONABIO data directories
+conabio/data/downloads/
+conabio/data/extracted/
+conabio/reports/*.rds
+
+# Shapefile components (but keep structure)
+shapefiles/*.shp
+shapefiles/*.shx
+shapefiles/*.dbf
+shapefiles/*.prj
+shapefiles/*.sbn
+shapefiles/*.sbx
+shapefiles/*.cpg
+
+# Output directories
+output/
+temp/
+tmp/
+
+# Log files
+*.log
+
+# Backup files
+*~
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+
+# Windows specific
+Desktop.ini
+$RECYCLE.BIN/
+
+# Conda environments
+.conda/
+conda-meta/
+
+# Python cache (if any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE files
+.vscode/
+.idea/
+
+# Large processed files
+extracted_biodiversity_data_*.csv
+*_processed.csv
+*_cleaned.csv
+
+# Report outputs
+reports/*.html
+reports/*.pdf
+
+# Keep important README and documentation files
+!README.md
+!README_*.md
+!*.R
+
+# Keep documentation folder
+!docs/
+!docs/*.md
+
+# Keep license and project configuration
+!LICENSE
+!*.yml
+!*.yaml

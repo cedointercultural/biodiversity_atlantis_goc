@@ -28,7 +28,7 @@ if (!dir.exists(downloads_dir)) {
 
 # Function to read URLs from Excel file
 get_conabio_urls <- function() {
-  excel_file <- file.path("..", "Links CONABIO_2025.xlsx")
+  excel_file <- file.path("..", "..", "Links CONABIO_2025.xlsx")
   
   if (!file.exists(excel_file)) {
     stop("Excel file not found: ", excel_file)

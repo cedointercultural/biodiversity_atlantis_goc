@@ -1,0 +1,7 @@
+# eBird API Key
+# 1. Obtén tu clave API gratuita en: https://ebird.org/api/keygen
+# 2. Copia este archivo como 'ebirdapi_key' (sin extensión)
+# 3. Reemplaza la línea de abajo con tu clave real
+# 4. El archivo 'ebirdapi_key' está en .gitignore para tu seguridad
+
+tu_clave_ebird_api_aqui

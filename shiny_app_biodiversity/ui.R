@@ -113,9 +113,9 @@ ui <- dashboardPage(
             status = "primary",
             solidHeader = TRUE,
             width = 12,
-            height = "600px",
+            height = "570px",
             
-            leafletOutput("map", height = "550px")
+            leafletOutput("map", height = "523px")
           )
         )
       ),

@@ -1182,11 +1182,10 @@ server <- function(input, output, session) {
             stringsAsFactors = FALSE
           )
           
-          # Filtrar datos válidos y por año
+          # Filtrar datos válidos (nota: la API de eBird solo devuelve últimos ~30 días)
           temp_df <- temp_df[!is.na(temp_df$species) & !is.na(temp_df$lon) & !is.na(temp_df$lat), ]
-          if (nrow(temp_df) > 0 && !is.na(year_start) && !is.na(year_end)) {
-            temp_df <- temp_df[is.na(temp_df$year) | (temp_df$year >= year_start & temp_df$year <= year_end), ]
-          }
+          # Ignorar filtro por año para eBird por limitación del endpoint
+          values$query_log <- c(values$query_log, "ℹ️ eBird: se ignora el filtro de años (API solo retorna últimos ~30 días)")
           
           # Aplicar filtrado espacial si está activado
           if (input$spatial_filter && !is.null(createPolygonSF())) {
@@ -1216,11 +1215,11 @@ server <- function(input, output, session) {
   # Función para consultar OBIS
   queryOBIS <- function(box_index, records_per_box, year_start, year_end) {
     tryCatch({
-      bbox_parts <- as.numeric(strsplit(values$grid_bbox[box_index], ",")[[1]])
-      if (length(bbox_parts) == 4) {
-        # OBIS usa robis package
-        obis_data <- occurrence(
-          geometry = paste(bbox_parts, collapse = ","),
+      # Preferir WKT para OBIS (parámetro geometry en WKT)
+      wkt_geom <- values$grid_wkt[box_index]
+      if (!is.null(wkt_geom) && nchar(wkt_geom) > 0) {
+        obis_data <- robis::occurrence(
+          geometry = wkt_geom,
           startdate = paste0(year_start, "-01-01"),
           enddate = paste0(year_end, "-12-31")
         )
@@ -1233,17 +1232,20 @@ server <- function(input, output, session) {
           obis_data <- obis_data[1:min(nrow(obis_data), records_per_box), ]
         }
         
-        if (!is.null(obis_data) && nrow(obis_data) > 0) {
+  if (!is.null(obis_data) && nrow(obis_data) > 0) {
           temp_df <- data.frame(
             species = tolower(clean_species_name(obis_data$scientificName)), # Convertir a minúsculas
             lon = as.numeric(obis_data$decimalLongitude),
             lat = as.numeric(obis_data$decimalLatitude),
-            year = if("year" %in% names(obis_data)) as.numeric(obis_data$year) else
-                   as.numeric(format(as.Date(obis_data$eventDate), "%Y")),
-            month = if("month" %in% names(obis_data)) as.numeric(obis_data$month) else
-                    as.numeric(format(as.Date(obis_data$eventDate), "%m")),
-            day = if("day" %in% names(obis_data)) as.numeric(obis_data$day) else
-                  as.numeric(format(as.Date(obis_data$eventDate), "%d")),
+      year = if("year" %in% names(obis_data)) as.numeric(obis_data$year) else
+       if("date_year" %in% names(obis_data)) as.numeric(obis_data$date_year) else
+       suppressWarnings(as.numeric(format(as.Date(obis_data$eventDate), "%Y"))),
+      month = if("month" %in% names(obis_data)) as.numeric(obis_data$month) else
+        if("date_month" %in% names(obis_data)) as.numeric(obis_data$date_month) else
+        suppressWarnings(as.numeric(format(as.Date(obis_data$eventDate), "%m"))),
+      day = if("day" %in% names(obis_data)) as.numeric(obis_data$day) else
+      if("date_day" %in% names(obis_data)) as.numeric(obis_data$date_day) else
+      suppressWarnings(as.numeric(format(as.Date(obis_data$eventDate), "%d"))),
             date_recorded = if("eventDate" %in% names(obis_data)) as.character(obis_data$eventDate) else NA,
             taxonRank = if("taxonRank" %in% names(obis_data)) as.character(obis_data$taxonRank) else NA, # Añadir taxonRank
             source = "OBIS",
@@ -1733,7 +1735,7 @@ server <- function(input, output, session) {
     values$total_boxes <- 0
     values$start_time <- NULL
     
-    showNotification("✅ Todos los resultados y logs han sido limpiados", type = "success", duration = 3)
+  showNotification("✅ Todos los resultados y logs han sido limpiados", type = "message", duration = 3)
   })
   
   # ========================================

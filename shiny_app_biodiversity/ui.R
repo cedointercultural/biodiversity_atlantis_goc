@@ -396,10 +396,10 @@ ui <- dashboardPage(
                         actionButton("clear_logs", "🗑️ Limpiar", class = "btn btn-outline-secondary btn-xs")
                     ),
                     
-                    div(id = "detailed_log_content",
-                        style = "font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #495057; white-space: pre-wrap;",
-                        "Esperando inicio de consulta..."
-                    )
+          div(id = "detailed_log_content",
+            style = "font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #495057; white-space: pre-wrap;",
+            verbatimTextOutput("detailed_log")
+          )
                 )
               )
             )

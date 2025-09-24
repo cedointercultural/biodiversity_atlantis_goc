@@ -70,6 +70,28 @@ server <- function(input, output, session) {
     start_time = NULL,
     boxes_processed = 0
   )
+
+  # Helpers de logging
+  add_log <- function(msg) {
+    stamp <- format(Sys.time(), "%H:%M:%S")
+    values$detailed_log <- c(values$detailed_log, paste0("[", stamp, "] ", msg))
+  }
+  capture_with_log <- function(expr, prefix = NULL) {
+    res <- NULL
+    withCallingHandlers({
+      out <- utils::capture.output({ res <- expr }, type = "message")
+      if (length(out)) for (ln in out) add_log(if (is.null(prefix)) ln else paste0(prefix, ": ", ln))
+    },
+    message = function(m) {
+      add_log(paste0(ifelse(is.null(prefix), "", paste0(prefix, ": ")), conditionMessage(m)))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      add_log(paste0("⚠️ ", ifelse(is.null(prefix), "", paste0(prefix, ": ")), conditionMessage(w)))
+      invokeRestart("muffleWarning")
+    })
+    res
+  }
   
   # Inicializar mapa
   output$map <- renderLeaflet({
@@ -691,15 +713,7 @@ server <- function(input, output, session) {
       ");
     }
     
-    # Actualizar logs detallados
-    if (length(values$detailed_log) > 0) {
-      log_content <- paste(values$detailed_log, collapse = "\n")
-      shinyjs::runjs(paste0("
-        document.getElementById('detailed_log_content').textContent = `", gsub("`", "\\`", log_content), "`;
-        var logDiv = document.getElementById('detailed_log_content');
-        logDiv.scrollTop = logDiv.scrollHeight;
-      "));
-    }
+    # Logs detallados ahora se muestran con renderText('detailed_log')
   })
   
   # Iniciar consulta de biodiversidad
@@ -1467,7 +1481,7 @@ server <- function(input, output, session) {
         gbif_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🌍 Consultando GBIF...")
         values$detailed_log <- c(values$detailed_log, gbif_msg)
         
-        temp_df <- queryGBIF(i, records_per_box, year_start, year_end)
+  temp_df <- capture_with_log(queryGBIF(i, records_per_box, year_start, year_end), prefix = "GBIF")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ GBIF box", i, "- agregados", nrow(temp_df), "registros")
@@ -1487,7 +1501,7 @@ server <- function(input, output, session) {
         inat_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🔬 Consultando iNaturalist...")
         values$detailed_log <- c(values$detailed_log, inat_msg)
         
-        temp_df <- queryiNaturalist(i, records_per_box, year_start, year_end)
+  temp_df <- capture_with_log(queryiNaturalist(i, records_per_box, year_start, year_end), prefix = "iNaturalist")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ iNaturalist box", i, "- agregados", nrow(temp_df), "registros")
@@ -1507,7 +1521,7 @@ server <- function(input, output, session) {
         ebird_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🦜 Consultando eBird...")
         values$detailed_log <- c(values$detailed_log, ebird_msg)
         
-        temp_df <- queryeBird(i, records_per_box, year_start, year_end)
+  temp_df <- capture_with_log(queryeBird(i, records_per_box, year_start, year_end), prefix = "eBird")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ eBird box", i, "- agregados", nrow(temp_df), "registros")
@@ -1527,7 +1541,7 @@ server <- function(input, output, session) {
         obis_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🌊 Consultando OBIS...")
         values$detailed_log <- c(values$detailed_log, obis_msg)
         
-        temp_df <- queryOBIS(i, records_per_box, year_start, year_end)
+  temp_df <- capture_with_log(queryOBIS(i, records_per_box, year_start, year_end), prefix = "OBIS")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ OBIS box", i, "- agregados", nrow(temp_df), "registros")
@@ -1547,7 +1561,7 @@ server <- function(input, output, session) {
         idigbio_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🏛️ Consultando iDigBio...")
         values$detailed_log <- c(values$detailed_log, idigbio_msg)
         
-        temp_df <- queryiDigBio(i, records_per_box, year_start, year_end)
+  temp_df <- capture_with_log(queryiDigBio(i, records_per_box, year_start, year_end), prefix = "iDigBio")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ iDigBio box", i, "- agregados", nrow(temp_df), "registros")
@@ -1783,6 +1797,12 @@ server <- function(input, output, session) {
     } else {
       "No hay actividad de consultas aún..."
     }
+  })
+
+  # Log detallado para el panel de UI
+  output$detailed_log <- renderText({
+    if (length(values$detailed_log) == 0) return("Esperando inicio de consulta...")
+    paste(values$detailed_log, collapse = "\n")
   })
   
   # Current status

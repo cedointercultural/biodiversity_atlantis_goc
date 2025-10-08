@@ -1434,16 +1434,42 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
     
-    databases <- input$databases
-    if (is.null(databases)) databases <- "gbif"
+    # Obtener bases de datos seleccionadas usando los nuevos checkboxes
+    databases <- c()
+    if (!is.null(input$enable_gbif) && input$enable_gbif) databases <- c(databases, "gbif")
+    if (!is.null(input$enable_ebird) && input$enable_ebird) databases <- c(databases, "ebird")
+    if (!is.null(input$enable_obis) && input$enable_obis) databases <- c(databases, "obis")
+    if (!is.null(input$enable_inaturalist) && input$enable_inaturalist) databases <- c(databases, "inat")
+    if (!is.null(input$enable_idigbio) && input$enable_idigbio) databases <- c(databases, "idigbio")
     
-    records_per_box <- input$records_per_box
-    if (is.null(records_per_box)) records_per_box <- 500
+    # Si no hay bases de datos seleccionadas, usar GBIF por defecto
+    if (length(databases) == 0) databases <- "gbif"
+    
+    # Obtener parámetros específicos de cada base de datos
+    gbif_records_per_box <- input$gbif_records_per_box
+    if (is.null(gbif_records_per_box)) gbif_records_per_box <- 500
+    
+    ebird_records_per_box <- input$ebird_records_per_box
+    if (is.null(ebird_records_per_box)) ebird_records_per_box <- 300
+    
+    obis_records_per_box <- input$obis_records_per_box
+    if (is.null(obis_records_per_box)) obis_records_per_box <- 400
+    
+    inat_records_per_box <- input$inat_records_per_box
+    if (is.null(inat_records_per_box)) inat_records_per_box <- 200
+    
+    idigbio_records_per_box <- input$idigbio_records_per_box
+    if (is.null(idigbio_records_per_box)) idigbio_records_per_box <- 300
     
     # Verificar si se desean registros ilimitados
     unlimited_records <- input$unlimited_records
     if (!is.null(unlimited_records) && unlimited_records) {
-      records_per_box <- 100000  # Número muy alto, prácticamente ilimitado
+      # Número muy alto, prácticamente ilimitado
+      gbif_records_per_box <- 100000
+      ebird_records_per_box <- 100000
+      obis_records_per_box <- 100000
+      inat_records_per_box <- 100000
+      idigbio_records_per_box <- 100000
       
       # Agregar mensaje de advertencia
       log_message <- "⚠️ Modo sin límites activado - las consultas pueden tardar mucho tiempo"
@@ -1481,7 +1507,7 @@ server <- function(input, output, session) {
         gbif_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🌍 Consultando GBIF...")
         values$detailed_log <- c(values$detailed_log, gbif_msg)
         
-  temp_df <- capture_with_log(queryGBIF(i, records_per_box, year_start, year_end), prefix = "GBIF")
+  temp_df <- capture_with_log(queryGBIF(i, gbif_records_per_box, year_start, year_end), prefix = "GBIF")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ GBIF box", i, "- agregados", nrow(temp_df), "registros")
@@ -1501,7 +1527,7 @@ server <- function(input, output, session) {
         inat_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🔬 Consultando iNaturalist...")
         values$detailed_log <- c(values$detailed_log, inat_msg)
         
-  temp_df <- capture_with_log(queryiNaturalist(i, records_per_box, year_start, year_end), prefix = "iNaturalist")
+  temp_df <- capture_with_log(queryiNaturalist(i, inat_records_per_box, year_start, year_end), prefix = "iNaturalist")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ iNaturalist box", i, "- agregados", nrow(temp_df), "registros")
@@ -1521,7 +1547,7 @@ server <- function(input, output, session) {
         ebird_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🦜 Consultando eBird...")
         values$detailed_log <- c(values$detailed_log, ebird_msg)
         
-  temp_df <- capture_with_log(queryeBird(i, records_per_box, year_start, year_end), prefix = "eBird")
+  temp_df <- capture_with_log(queryeBird(i, ebird_records_per_box, year_start, year_end), prefix = "eBird")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ eBird box", i, "- agregados", nrow(temp_df), "registros")
@@ -1541,7 +1567,7 @@ server <- function(input, output, session) {
         obis_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🌊 Consultando OBIS...")
         values$detailed_log <- c(values$detailed_log, obis_msg)
         
-  temp_df <- capture_with_log(queryOBIS(i, records_per_box, year_start, year_end), prefix = "OBIS")
+  temp_df <- capture_with_log(queryOBIS(i, obis_records_per_box, year_start, year_end), prefix = "OBIS")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ OBIS box", i, "- agregados", nrow(temp_df), "registros")
@@ -1561,7 +1587,7 @@ server <- function(input, output, session) {
         idigbio_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] 🏛️ Consultando iDigBio...")
         values$detailed_log <- c(values$detailed_log, idigbio_msg)
         
-  temp_df <- capture_with_log(queryiDigBio(i, records_per_box, year_start, year_end), prefix = "iDigBio")
+  temp_df <- capture_with_log(queryiDigBio(i, idigbio_records_per_box, year_start, year_end), prefix = "iDigBio")
         if (nrow(temp_df) > 0) {
           all_biodiversity <- rbind(all_biodiversity, temp_df)
           success_msg <- paste("[", format(Sys.time(), "%H:%M:%S"), "] ✅ iDigBio box", i, "- agregados", nrow(temp_df), "registros")

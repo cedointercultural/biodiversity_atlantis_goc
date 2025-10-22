@@ -139,3 +139,11 @@ reports/*.pdf
 !LICENSE
 !*.yml
 !*.yaml
+
+#Others
+*.png
+*.txt
+*.yml
+*.json
+*.xlsx
+*.gpkg

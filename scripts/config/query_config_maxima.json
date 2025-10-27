@@ -1,0 +1,88 @@
+{
+  "general": {
+    "description": "Configuración optimizada para máxima recuperación de registros",
+    "polygon_path": "shapefiles/study_zone.gpkg",
+    "output_dir": "data/query_results",
+    "date_format": "%Y-%m-%d"
+  },
+  "databases": {
+    "gbif": {
+      "enabled": true,
+      "name": "Global Biodiversity Information Facility",
+      "params": {
+        "records_per_box": 15000,
+        "year_start": 2000,
+        "year_end": 2025,
+        "rank": null,
+        "has_coordinate": true,
+        "basis_of_record": null,
+        "pagination": {
+          "enabled": false,
+          "page_size": 1000,
+          "max_pages": 10
+        }
+      }
+    },
+    "obis": {
+      "enabled": true,
+      "name": "Ocean Biodiversity Information System",
+      "params": {
+        "records_per_box": 15000,
+        "year_start": 2000,
+        "year_end": 2025,
+        "taxon_rank": null,
+        "has_coordinate": true
+      }
+    },
+    "ebird": {
+      "enabled": false,
+      "name": "eBird",
+      "params": {
+        "records_per_box": 5000,
+        "year_start": 2000,
+        "year_end": 2025,
+        "api_key": null,
+        "region_code": null
+      }
+    },
+    "idigbio": {
+      "enabled": true,
+      "name": "iDigBio",
+      "params": {
+        "records_per_box": 15000,
+        "year_start": 2000,
+        "year_end": 2025,
+        "taxon_rank": null
+      }
+    },
+    "inat": {
+      "enabled": true,
+      "name": "iNaturalist",
+      "params": {
+        "records_per_box": 15000,
+        "year_start": 2000,
+        "year_end": 2025,
+        "page_size": 200
+      }
+    }
+  },
+  "spatial": {
+    "grid_enabled": true,
+    "grid_size_degrees": 0.5,
+    "max_boxes": null,
+    "buffer_percent": 2,
+    "grid_type": "square",
+    "overlap": 0.0,
+    "auto_optimize_grid": true
+  },
+  "output": {
+    "formats": ["csv", "json", "xlsx"],
+    "include_metadata": true,
+    "compress": false
+  },
+  "logging": {
+    "level": "INFO",
+    "save_logs": true,
+    "log_file": "logs/query_execution_maxima.log"
+  }
+}

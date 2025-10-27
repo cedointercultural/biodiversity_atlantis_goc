@@ -26,6 +26,7 @@ library(robis)         # Consultas OBIS
 library(spocc)         # Consultas de múltiples fuentes (iNat, eBird)
 library(rebird)        # Consultas eBird
 library(ridigbio)      # Consultas iDigBio
+library(httr)          # Peticiones HTTP para APIs
 
 # Librería de exportación
 library(openxlsx)      # Exportar a Excel (opcional)
@@ -165,21 +166,25 @@ execute_biodiversity_queries <- function(config_file,
     grid <- generate_grid_bboxes(
       polygon = polygon, 
       grid_size = config$spatial$grid_size_degrees,
-      square = TRUE
+      square = TRUE,
+      buffer_percent = if(!is.null(config$spatial$buffer_percent)) config$spatial$buffer_percent else 2
     )
-    log_fn(paste("Grid generado:", nrow(grid), "celdas de", 
-                 config$spatial$grid_size_degrees, "grados"))
+    log_fn(paste("Grid optimizado generado:", nrow(grid), "celdas de", 
+                 config$spatial$grid_size_degrees, "grados con buffer"))
   } else {
     grid <- generate_simple_bbox(polygon)
     log_fn("Usando bounding box completo (sin subdivisión)")
   }
   
-  # Limitar número de boxes si es necesario
+  # Solo aplicar límite de boxes si está configurado explícitamente
   if (!is.null(config$spatial$max_boxes) && 
+      is.numeric(config$spatial$max_boxes) &&
+      config$spatial$max_boxes > 0 &&
       nrow(grid) > config$spatial$max_boxes) {
-    log_fn(paste("Limitando a", config$spatial$max_boxes, "cajas de", 
+    log_fn(paste("⚠️ Limitando grid a", config$spatial$max_boxes, "celdas de", 
                  nrow(grid), "disponibles"))
     grid <- grid[1:config$spatial$max_boxes, ]
+    log_fn("✅ Grid limitado aplicado")
   }
   
   # ========================================================================
@@ -338,7 +343,7 @@ show_help <- function() {
   cat("═══════════════════════════════════════════════════════════════\n\n")
   cat("USO BÁSICO:\n")
   cat("  results <- execute_biodiversity_queries(\n")
-  cat("    config_file = 'scripts/query_config.json',\n")
+  cat("    config_file = 'scripts/config/query_config.json',\n")
   cat("    polygon_file = 'shapefiles/study_zone.gpkg',\n")
   cat("    output_dir = 'data/query_results'\n")
   cat("  )\n\n")

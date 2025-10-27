@@ -64,14 +64,14 @@ execute_all_queries_parallel <- function(grid, config, log_function = cat, n_cor
         function(i) {
           tryCatch({
             query_gbif(
-              bbox = grid$bbox[i],
-              wkt = grid$wkt[i],
-              config = config$databases$gbif,
+              grid_row = grid[i, ],
+              config = config,
               box_id = i,
-              log_function = function(msg) {} # Silenciar logs individuales
+              log_function = function(msg) {}
             )
           }, error = function(e) {
-            data.frame() # Retornar data frame vacío en caso de error
+            log_function(sprintf("✗ Error GBIF - Box %d: %s", i, e$message))
+            data.frame()
           })
         },
         .options = furrr_options(seed = TRUE)
@@ -107,12 +107,13 @@ execute_all_queries_parallel <- function(grid, config, log_function = cat, n_cor
         function(i) {
           tryCatch({
             query_obis(
-              bbox = grid$bbox[i],
-              config = config$databases$obis,
+              grid_row = grid[i, ],
+              config = config,
               box_id = i,
               log_function = function(msg) {}
             )
           }, error = function(e) {
+            log_function(sprintf("✗ Error OBIS - Box %d: %s", i, e$message))
             data.frame()
           })
         },
@@ -147,12 +148,13 @@ execute_all_queries_parallel <- function(grid, config, log_function = cat, n_cor
         function(i) {
           tryCatch({
             query_inat(
-              bbox = grid$bbox[i],
-              config = config$databases$inat,
+              grid_row = grid[i, ],
+              config = config,
               box_id = i,
               log_function = function(msg) {}
             )
           }, error = function(e) {
+            log_function(sprintf("✗ Error iNaturalist - Box %d: %s", i, e$message))
             data.frame()
           })
         },
@@ -187,12 +189,13 @@ execute_all_queries_parallel <- function(grid, config, log_function = cat, n_cor
         function(i) {
           tryCatch({
             query_idigbio(
-              bbox = grid$bbox[i],
-              config = config$databases$idigbio,
+              grid_row = grid[i, ],
+              config = config,
               box_id = i,
               log_function = function(msg) {}
             )
           }, error = function(e) {
+            log_function(sprintf("✗ Error iDigBio - Box %d: %s", i, e$message))
             data.frame()
           })
         },
@@ -291,9 +294,9 @@ execute_all_queries_chunked <- function(grid, config, log_function = cat,
   
   # Procesar por base de datos
   for (db_name in names(config$databases)) {
-    db_config <- config$databases[[db_name]]
+  db_config <- config$databases[[db_name]]
     
-    if (!db_config$enabled) next
+  if (!db_config$enabled) next
     
     log_function(paste0("Procesando ", toupper(db_name), " en ", n_chunks, " chunks..."))
     start_time <- Sys.time()
@@ -329,22 +332,22 @@ execute_all_queries_chunked <- function(grid, config, log_function = cat,
           chunk_indices,
           function(i) {
             tryCatch({
-              args <- list(
-                config = db_config,
+              if (identical(query_func, query_ebird)) {
+                return(query_ebird(
+                  bbox = grid$bbox[i],
+                  config = config,
+                  box_id = i,
+                  log_function = function(msg) {}
+                ))
+              }
+              query_func(
+                grid_row = grid[i, ],
+                config = config,
                 box_id = i,
                 log_function = function(msg) {}
               )
-              
-              # Agregar bbox o wkt según la función
-              if (db_name %in% c("gbif")) {
-                args$bbox <- grid$bbox[i]
-                args$wkt <- grid$wkt[i]
-              } else {
-                args$bbox <- grid$bbox[i]
-              }
-              
-              do.call(query_func, args)
             }, error = function(e) {
+              log_function(sprintf("    ✗ Error %s - Box %d: %s", toupper(db_name), i, e$message))
               data.frame()
             })
           },

@@ -17,7 +17,7 @@ source("scripts/database_queries.R")
 
 # Ejecutar consultas
 results <- execute_biodiversity_queries(
-  config_file = "scripts/query_config_final.json",
+  config_file = "scripts/config/query_config_final.json",
   polygon_file = "shapefiles/study_zone.gpkg",
   output_dir = "data/query_results"
 )

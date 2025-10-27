@@ -38,7 +38,7 @@ start_time <- Sys.time()
 
 results <- tryCatch({
   execute_biodiversity_queries(
-    config_file = "scripts/query_config_maxima.json",
+    config_file = "scripts/config/query_config_maxima.json",
     polygon_file = "shapefiles/study_zone.gpkg",
     output_dir = "data/query_results"
   )

@@ -17,7 +17,7 @@
 #' @param log_function Función para registrar mensajes (opcional)
 #' @return Data frame con registros de GBIF formateados
 #' @export
-query_gbif <- function(wkt, config, box_id = 1, log_function = NULL) {
+query_gbif <- function(grid_row, config, box_id = 1, log_function = NULL) {
   if (is.null(log_function)) {
     log_function <- function(msg) cat(msg, "\n")
   }
@@ -25,27 +25,32 @@ query_gbif <- function(wkt, config, box_id = 1, log_function = NULL) {
   tryCatch({
     log_function(paste("Consultando GBIF - Box", box_id, "..."))
     
-    # Validar parámetros requeridos
-    if (is.null(wkt) || nchar(trimws(wkt)) == 0) {
-      log_function(paste("✗ Error GBIF - Box", box_id, ": geometría WKT vacía"))
+    # Obtener formato espacial optimizado para GBIF
+    spatial_format <- get_spatial_format_for_api("gbif", grid_row)
+    
+    if (is.null(spatial_format$value) || nchar(trimws(spatial_format$value)) == 0) {
+      log_function(paste("✗ Error GBIF - Box", box_id, ": geometría vacía"))
       return(data.frame())
     }
     
+    # Extraer parámetros de GBIF de la configuración
+    gbif_params <- config$databases$gbif$params
+    
     # Construir parámetros de consulta
     params <- list(
-      geometry = wkt,
-      limit = config$params$records_per_box,
-      hasCoordinate = config$params$has_coordinate
+      geometry = spatial_format$value,
+      limit = gbif_params$records_per_box,
+      hasCoordinate = gbif_params$has_coordinate
     )
     
     # Agregar filtro de año si está configurado
-    if (!is.null(config$params$year_start) && !is.null(config$params$year_end)) {
-      params$year <- paste0(config$params$year_start, ",", config$params$year_end)
+    if (!is.null(gbif_params$year_start) && !is.null(gbif_params$year_end)) {
+      params$year <- paste0(gbif_params$year_start, ",", gbif_params$year_end)
     }
     
     # Agregar filtros opcionales
-    if (!is.null(config$params$rank) && config$params$rank != "") {
-      params$rank <- config$params$rank
+    if (!is.null(gbif_params$rank) && gbif_params$rank != "") {
+      params$rank <- gbif_params$rank
     }
     
     # Ejecutar consulta con timeout implícito
@@ -88,13 +93,13 @@ query_gbif <- function(wkt, config, box_id = 1, log_function = NULL) {
 
 #' Consultar OBIS (Ocean Biodiversity Information System)
 #'
-#' @param bbox Bounding box como string "min_lng,min_lat,max_lng,max_lat"
+#' @param grid_row Fila del grid con información espacial completa
 #' @param config Lista de configuración OBIS con parámetros de consulta
 #' @param box_id ID de la caja de búsqueda (para logging)
 #' @param log_function Función para registrar mensajes (opcional)
 #' @return Data frame con registros de OBIS formateados
 #' @export
-query_obis <- function(bbox, config, box_id = 1, log_function = NULL) {
+query_obis <- function(grid_row, config, box_id = 1, log_function = NULL) {
   if (is.null(log_function)) {
     log_function <- function(msg) cat(msg, "\n")
   }
@@ -102,44 +107,27 @@ query_obis <- function(bbox, config, box_id = 1, log_function = NULL) {
   tryCatch({
     log_function(paste("Consultando OBIS - Box", box_id, "..."))
     
-    # Validar y parsear bbox
-    if (is.null(bbox) || nchar(trimws(bbox)) == 0) {
-      log_function(paste("✗ Error OBIS - Box", box_id, ": bbox vacío"))
+    # Obtener formato espacial optimizado para OBIS
+    spatial_format <- get_spatial_format_for_api("obis", grid_row)
+    
+    if (is.null(spatial_format$value) || nchar(trimws(spatial_format$value)) == 0) {
+      log_function(paste("✗ Error OBIS - Box", box_id, ": geometría vacía"))
       return(data.frame())
     }
     
-    bbox_parts <- as.numeric(strsplit(bbox, ",")[[1]])
+    # Extraer parámetros de OBIS de la configuración
+    obis_params_config <- config$databases$obis$params
     
-    if (length(bbox_parts) != 4 || any(is.na(bbox_parts))) {
-      log_function(paste("✗ Error OBIS - Box", box_id, ": formato de bbox inválido"))
-      return(data.frame())
-    }
-    
-    # OBIS requiere formato WKT POLYGON
-    # Construir polígono desde bbox: minLng,minLat,maxLng,maxLat
-    min_lng <- bbox_parts[1]
-    min_lat <- bbox_parts[2]
-    max_lng <- bbox_parts[3]
-    max_lat <- bbox_parts[4]
-    
-    # Crear WKT polygon (en sentido antihorario)
-    wkt_polygon <- sprintf("POLYGON((%f %f,%f %f,%f %f,%f %f,%f %f))",
-                           min_lng, min_lat,
-                           max_lng, min_lat,
-                           max_lng, max_lat,
-                           min_lng, max_lat,
-                           min_lng, min_lat)
-    
-    # Ejecutar consulta a OBIS con parámetros adicionales
+    # Ejecutar consulta a OBIS con parámetros correctos
     obis_params <- list(
-      geometry = wkt_polygon,
-      size = min(config$params$records_per_box, 10000)  # OBIS tiene límite de 10000
+      geometry = spatial_format$value
+      # NOTA: OBIS no acepta parámetro 'size', usa paginación automática
     )
     
     # Agregar filtro de años si está configurado
-    if (!is.null(config$params$year_start) && !is.null(config$params$year_end)) {
-      obis_params$startdate <- paste0(config$params$year_start, "-01-01")
-      obis_params$enddate <- paste0(config$params$year_end, "-12-31")
+    if (!is.null(obis_params_config$year_start) && !is.null(obis_params_config$year_end)) {
+      obis_params$startdate <- paste0(obis_params_config$year_start, "-01-01")
+      obis_params$enddate <- paste0(obis_params_config$year_end, "-12-31")
     }
     
     obis_result <- do.call(robis::occurrence, obis_params)
@@ -180,13 +168,13 @@ query_obis <- function(bbox, config, box_id = 1, log_function = NULL) {
 
 #' Consultar iNaturalist
 #'
-#' @param bbox Bounding box como string "min_lng,min_lat,max_lng,max_lat"
+#' @param grid_row Fila del grid con información espacial completa
 #' @param config Lista de configuración iNaturalist con parámetros de consulta
 #' @param box_id ID de la caja de búsqueda (para logging)
 #' @param log_function Función para registrar mensajes (opcional)
 #' @return Data frame con registros de iNaturalist formateados
 #' @export
-query_inat <- function(bbox, config, box_id = 1, log_function = NULL) {
+query_inat <- function(grid_row, config, box_id = 1, log_function = NULL) {
   if (is.null(log_function)) {
     log_function <- function(msg) cat(msg, "\n")
   }
@@ -194,51 +182,85 @@ query_inat <- function(bbox, config, box_id = 1, log_function = NULL) {
   tryCatch({
     log_function(paste("Consultando iNaturalist - Box", box_id, "..."))
     
-    # Validar y parsear bbox
-    if (is.null(bbox) || nchar(trimws(bbox)) == 0) {
-      log_function(paste("✗ Error iNaturalist - Box", box_id, ": bbox vacío"))
+    # Obtener formato espacial optimizado para iNaturalist
+    spatial_format <- get_spatial_format_for_api("inat", grid_row)
+    
+    if (is.null(spatial_format$value)) {
+      log_function(paste("✗ Error iNaturalist - Box", box_id, ": parámetros espaciales vacíos"))
       return(data.frame())
     }
     
-    bbox_parts <- as.numeric(strsplit(bbox, ",")[[1]])
+    # Extraer parámetros de iNaturalist de la configuración
+    inat_params_config <- config$databases$inat$params
     
-    if (length(bbox_parts) != 4 || any(is.na(bbox_parts))) {
-      log_function(paste("✗ Error iNaturalist - Box", box_id, ": formato de bbox inválido"))
+    # Construir URL de iNaturalist API
+    base_url <- "https://api.inaturalist.org/v1/observations"
+    params <- spatial_format$value  # Ya contiene swlat, swlng, nelat, nelng
+    params$per_page <- min(inat_params_config$records_per_box, 200)  # Límite de iNat
+    params$quality_grade <- "research"
+    
+    # Agregar filtro de años si está configurado
+    if (!is.null(inat_params_config$year_start) && !is.null(inat_params_config$year_end)) {
+      params$d1 <- paste0(inat_params_config$year_start, "-01-01")
+      params$d2 <- paste0(inat_params_config$year_end, "-12-31")
+    }
+    
+    # Construir query string
+    query_string <- paste(names(params), params, sep = "=", collapse = "&")
+    url <- paste(base_url, query_string, sep = "?")
+    
+    # Hacer petición HTTP
+    response <- httr::GET(url)
+    
+    if (httr::status_code(response) != 200) {
+      log_function(paste("⚠ iNaturalist - Box", box_id, ": error de API"))
       return(data.frame())
     }
     
-    # Formato para spocc: "minLng,minLat,maxLng,maxLat"
-    inat_result <- spocc::occ(
-      from = "inat",
-      geometry = paste(bbox_parts, collapse = ","),
-      limit = config$params$records_per_box
-    )
+    json_data <- httr::content(response, "text", encoding = "UTF-8")
+    data_list <- jsonlite::fromJSON(json_data)
     
-    # Verificar resultados con chequeos de seguridad
-    if (is.null(inat_result) || 
-        is.null(inat_result$inat) || 
-        is.null(inat_result$inat$data) ||
-        !is.data.frame(inat_result$inat$data) || 
-        nrow(inat_result$inat$data) == 0) {
+    if (is.null(data_list$results) || length(data_list$results) == 0) {
       log_function(paste("⚠ iNaturalist - Box", box_id, ": sin resultados"))
       return(data.frame())
     }
     
     # Procesar datos
-    data <- inat_result$inat$data
+    data <- data_list$results
+    
+    # Extraer especies de la estructura JSON de iNaturalist
+    species_names <- sapply(1:nrow(data), function(i) {
+      if (!is.null(data$taxon[[i]]) && !is.null(data$taxon[[i]]$name)) {
+        return(clean_species_name(data$taxon[[i]]$name))
+      } else {
+        return(NA_character_)
+      }
+    })
     
     result_df <- data.frame(
-      species = sapply(data$name, function(x) 
-        if (!is.na(x)) clean_species_name(x) else NA_character_),
-      lon = as.numeric(data$longitude),
-      lat = as.numeric(data$latitude),
-      year = if("year" %in% names(data)) as.numeric(data$year) else NA_real_,
-      month = if("month" %in% names(data)) as.numeric(data$month) else NA_real_,
-      day = if("day" %in% names(data)) as.numeric(data$day) else NA_real_,
-      date_recorded = if("date_observed" %in% names(data)) as.character(data$date_observed) else NA_character_,
-      taxonRank = NA_character_,
+      species = species_names,
+      lon = as.numeric(data$location),  # iNat devuelve "lat,lng" en location
+      lat = as.numeric(data$location),  # Necesita parsing especial
+      year = as.numeric(substr(data$observed_on, 1, 4)),
+      month = as.numeric(substr(data$observed_on, 6, 7)),
+      day = as.numeric(substr(data$observed_on, 9, 10)),
+      date_recorded = as.character(data$observed_on),
+      taxonRank = sapply(1:nrow(data), function(i) {
+        if (!is.null(data$taxon[[i]]) && !is.null(data$taxon[[i]]$rank)) {
+          return(toupper(data$taxon[[i]]$rank))
+        } else {
+          return(NA_character_)
+        }
+      }),
       stringsAsFactors = FALSE
     )
+    
+    # Parsear coordenadas de location string "lat,lng"
+    if ("location" %in% names(data) && any(!is.na(data$location))) {
+      coords <- strsplit(as.character(data$location), ",")
+      result_df$lat <- as.numeric(sapply(coords, function(x) if(length(x) >= 2) x[1] else NA))
+      result_df$lon <- as.numeric(sapply(coords, function(x) if(length(x) >= 2) x[2] else NA))
+    }
     
     log_function(paste("✓ iNaturalist - Box", box_id, ":", nrow(result_df), "registros"))
     
@@ -333,7 +355,7 @@ query_ebird <- function(bbox, config, box_id = 1, log_function = NULL) {
 #' @param log_function Función para registrar mensajes (opcional)
 #' @return Data frame con registros de iDigBio formateados
 #' @export
-query_idigbio <- function(bbox, config, box_id = 1, log_function = NULL) {
+query_idigbio <- function(grid_row, config, box_id = 1, log_function = NULL) {
   if (is.null(log_function)) {
     log_function <- function(msg) cat(msg, "\n")
   }
@@ -341,36 +363,24 @@ query_idigbio <- function(bbox, config, box_id = 1, log_function = NULL) {
   tryCatch({
     log_function(paste("Consultando iDigBio - Box", box_id, "..."))
     
-    # Validar y parsear bbox
-    if (is.null(bbox) || nchar(trimws(bbox)) == 0) {
-      log_function(paste("✗ Error iDigBio - Box", box_id, ": bbox vacío"))
+    # Obtener formato espacial optimizado para iDigBio
+    spatial_format <- get_spatial_format_for_api("idigbio", grid_row)
+    
+    if (is.null(spatial_format$value)) {
+      log_function(paste("✗ Error iDigBio - Box", box_id, ": parámetros espaciales vacíos"))
       return(data.frame())
     }
     
-    bbox_parts <- as.numeric(strsplit(bbox, ",")[[1]])
-    
-    if (length(bbox_parts) != 4 || any(is.na(bbox_parts))) {
-      log_function(paste("✗ Error iDigBio - Box", box_id, ": formato de bbox inválido"))
-      return(data.frame())
-    }
+    # Extraer parámetros de iDigBio de la configuración
+    idigbio_params_config <- config$databases$idigbio$params
     
     # Construcción del query para iDigBio con formato correcto
     # iDigBio usa 'geopoint' (minúscula) y formato específico
     idigbio_result <- ridigbio::idig_search_records(
       rq = list(
-        geopoint = list(
-          type = "geo_bounding_box",
-          top_left = list(
-            lon = bbox_parts[1],  # min_lng
-            lat = bbox_parts[4]   # max_lat
-          ),
-          bottom_right = list(
-            lon = bbox_parts[3],  # max_lng
-            lat = bbox_parts[2]   # min_lat
-          )
-        )
+        geopoint = spatial_format$value
       ),
-      limit = min(config$params$records_per_box, 100000)  # iDigBio permite hasta 100k
+      limit = min(idigbio_params_config$records_per_box, 100000)  # iDigBio permite hasta 100k
     )
     
     if (is.null(idigbio_result) || 
@@ -427,8 +437,8 @@ execute_all_queries <- function(grid, config, log_function = NULL) {
     
     for (i in 1:nrow(grid)) {
       box_result <- query_gbif(
-        wkt = grid$wkt[i], 
-        config = config$databases$gbif, 
+        grid_row = grid[i, ], 
+        config = config, 
         box_id = i,
         log_function = log_function
       )
@@ -450,8 +460,8 @@ execute_all_queries <- function(grid, config, log_function = NULL) {
     
     for (i in 1:nrow(grid)) {
       box_result <- query_obis(
-        bbox = grid$bbox[i], 
-        config = config$databases$obis, 
+        grid_row = grid[i, ], 
+        config = config, 
         box_id = i,
         log_function = log_function
       )
@@ -473,8 +483,8 @@ execute_all_queries <- function(grid, config, log_function = NULL) {
     
     for (i in 1:nrow(grid)) {
       box_result <- query_inat(
-        bbox = grid$bbox[i], 
-        config = config$databases$inat, 
+        grid_row = grid[i, ], 
+        config = config, 
         box_id = i,
         log_function = log_function
       )
@@ -497,7 +507,7 @@ execute_all_queries <- function(grid, config, log_function = NULL) {
     for (i in 1:nrow(grid)) {
       box_result <- query_ebird(
         bbox = grid$bbox[i], 
-        config = config$databases$ebird, 
+        config = config, 
         box_id = i,
         log_function = log_function
       )
@@ -519,8 +529,8 @@ execute_all_queries <- function(grid, config, log_function = NULL) {
     
     for (i in 1:nrow(grid)) {
       box_result <- query_idigbio(
-        bbox = grid$bbox[i], 
-        config = config$databases$idigbio, 
+        grid_row = grid[i, ], 
+        config = config, 
         box_id = i,
         log_function = log_function
       )

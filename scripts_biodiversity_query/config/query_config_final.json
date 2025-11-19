@@ -11,7 +11,7 @@
       "name": "Global Biodiversity Information Facility",
       "params": {
         "records_per_box": 15000,
-        "year_start": 2015,
+        "year_start": 2000,
         "year_end": 2025,
         "rank": null,
         "has_coordinate": true,
@@ -19,7 +19,7 @@
         "pagination": {
           "enabled": false,
           "page_size": 500,
-          "max_pages": 1
+          "max_pages": 10
         }
       }
     },
@@ -28,7 +28,7 @@
       "name": "Ocean Biodiversity Information System",
       "params": {
         "records_per_box": 15000,
-        "year_start": 2015,
+        "year_start": 2000,
         "year_end": 2025,
         "taxon_rank": null,
         "has_coordinate": true
@@ -39,7 +39,7 @@
       "name": "eBird",
       "params": {
         "records_per_box": 100,
-        "year_start": 2015,
+        "year_start": 2000,
         "year_end": 2025,
         "api_key": null,
         "region_code": null
